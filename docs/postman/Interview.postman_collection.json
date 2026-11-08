@@ -1,0 +1,5204 @@
+{
+  "info": {
+    "_postman_id": "9eb932ab-fd14-49ce-a0ef-202611080001",
+    "name": "Interview API - Plan de pruebas",
+    "description": "110 peticiones con validaciones automáticas. Ejecutar todas en orden desde L01, sin archivo de datos, una iteración por ejecución. Incluye baseUrl y usuarios locales predeterminados; el environment local permite sobrescribirlos. Ver docs/postman/README.md y docs/PLAN_PRUEBAS_API.md. Genera cuatro eventos y dos acciones por ejecución; reiniciar la aplicación restablece H2. El login es un mock Base64 sin contraseña ni firma.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.response.code >= 400) {",
+          "    pm.test(\"Error con contrato ProblemDetail\", () => {",
+          "        pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+          "        const error = pm.response.json();",
+          "        pm.expect(error).to.include.all.keys(\"title\", \"status\", \"detail\", \"instance\");",
+          "        // La serialización actual omite type cuando su valor es about:blank.",
+          "        if (error.type !== undefined) pm.expect(error.type).to.be.a(\"string\").and.not.empty;",
+          "        pm.expect(error.title).to.be.a(\"string\").and.not.empty;",
+          "        pm.expect(error.status).to.eql(pm.response.code);",
+          "        pm.expect(error.detail).to.be.a(\"string\").and.not.empty;",
+          "        pm.expect(error.instance).to.eql(pm.variables.replaceIn(pm.request.url.toString()).split(\"?\")[0].replace(/^https?:\\/\\/[^/]+/, \"\"));",
+          "        pm.expect(error).not.to.have.property(\"stackTrace\");",
+          "        pm.expect(error).not.to.have.property(\"exception\");",
+          "        pm.expect(error).not.to.have.property(\"actions\");",
+          "        pm.expect(error).not.to.have.property(\"history\");",
+          "    });",
+          "}",
+          "if (pm.response.code === 204) {",
+          "    pm.test(\"Respuesta 204 sin cuerpo\", () => pm.expect(pm.response.text()).to.eql(\"\"));",
+          "}",
+          "if (pm.response.code === 200 || (pm.response.code === 201 && pm.request.url.toString().endsWith(\"/actions\"))) {",
+          "    pm.test(\"Respuesta de datos en JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "reporter1Username",
+      "value": "reportante1",
+      "type": "string"
+    },
+    {
+      "key": "reporter2Username",
+      "value": "reportante2",
+      "type": "string"
+    },
+    {
+      "key": "reviewerUsername",
+      "value": "revisor1",
+      "type": "string"
+    },
+    {
+      "key": "reporter1Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reporter2Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reviewerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "eventId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherEventId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "actionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "eventTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherEventTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "eventDate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "today",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "futureDate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "beforeEventDate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetDate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "longTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "longDescription",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "maxDescription",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "longActionDescription",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "maxActionDescription",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "longResponsible",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "maxResponsible",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "minActionEventId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "minActionEventTitle",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Login",
+      "description": "Credenciales semilla, contrato de token, datos inválidos y contrato HTTP. L01 inicia una ejecución independiente.",
+      "item": [
+        {
+          "name": "L01 | Login de reporter1Username",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Iniciar siempre la colección por L01. Las fechas se calculan en UTC.",
+                  "const now = new Date();",
+                  "const day = 86400000;",
+                  "const runId = now.getTime() + \"-\" + pm.variables.replaceIn(\"{{$randomUUID}}\").slice(0, 8);",
+                  "[\"reporter1Token\", \"reporter2Token\", \"reviewerToken\", \"eventId\", \"otherEventId\", \"actionId\", \"minActionEventId\", \"minActionEventTitle\"].forEach(k => pm.collectionVariables.unset(k));",
+                  "const values = {",
+                  "    eventTitle: \"QA Postman \" + runId,",
+                  "    otherEventTitle: (\"QA otro \" + runId).padEnd(120, \"X\"),",
+                  "    eventDate: new Date(now.getTime() - day).toISOString().slice(0, 10),",
+                  "    today: now.toISOString().slice(0, 10),",
+                  "    futureDate: new Date(now.getTime() + 2 * day).toISOString().slice(0, 10),",
+                  "    beforeEventDate: new Date(now.getTime() - 2 * day).toISOString().slice(0, 10) + \"T00:00:00\",",
+                  "    longTitle: \"T\".repeat(121),",
+                  "    longDescription: \"D\".repeat(2001),",
+                  "    maxDescription: \"D\".repeat(2000),",
+                  "    longActionDescription: \"A\".repeat(501),",
+                  "    maxActionDescription: \"A\".repeat(500),",
+                  "    longResponsible: \"R\".repeat(31),",
+                  "    maxResponsible: \"R\".repeat(30)",
+                  "};",
+                  "Object.entries(values).forEach(([k, v]) => pm.collectionVariables.set(k, v));",
+                  "pm.collectionVariables.set(\"targetDate\", values.eventDate + \"T00:00:00\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Respuesta con un token Base64 y la identidad de BD\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"token\");",
+                  "        pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "        const payload = JSON.parse(atob(data.token));",
+                  "        pm.expect(payload).to.have.all.keys(\"scheme\", \"username\", \"role\");",
+                  "        pm.expect(payload.scheme).to.eql(\"login\");",
+                  "        pm.expect(payload.username).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(payload.role).to.eql(\"reportante\");",
+                  "        pm.collectionVariables.set(\"reporter1Token\", data.token);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Login de reporter1Username",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{reporter1Username}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L02 | Login de reporter2Username",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Respuesta con un token Base64 y la identidad de BD\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"token\");",
+                  "        pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "        const payload = JSON.parse(atob(data.token));",
+                  "        pm.expect(payload).to.have.all.keys(\"scheme\", \"username\", \"role\");",
+                  "        pm.expect(payload.scheme).to.eql(\"login\");",
+                  "        pm.expect(payload.username).to.eql(pm.variables.get(\"reporter2Username\"));",
+                  "        pm.expect(payload.role).to.eql(\"reportante\");",
+                  "        pm.collectionVariables.set(\"reporter2Token\", data.token);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Login de reporter2Username",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{reporter2Username}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L03 | Login de reviewerUsername",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Respuesta con un token Base64 y la identidad de BD\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"token\");",
+                  "        pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "        const payload = JSON.parse(atob(data.token));",
+                  "        pm.expect(payload).to.have.all.keys(\"scheme\", \"username\", \"role\");",
+                  "        pm.expect(payload.scheme).to.eql(\"login\");",
+                  "        pm.expect(payload.username).to.eql(pm.variables.get(\"reviewerUsername\"));",
+                  "        pm.expect(payload.role).to.eql(\"revisor\");",
+                  "        pm.collectionVariables.set(\"reviewerToken\", data.token);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Login de reviewerUsername",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{reviewerUsername}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L04 | Username ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Username ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L05 | Username null",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Username null",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L06 | Username vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Username vacío",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L07 | Username con espacios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Username con espacios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L08 | Usuario inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Usuario inexistente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"qa_usuario_inexistente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L09 | JSON mal formado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "JSON mal formado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\":",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L10 | Sin cuerpo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Sin cuerpo",
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L11 | Cuerpo null",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Cuerpo null",
+            "body": {
+              "mode": "raw",
+              "raw": "null",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L12 | Content-Type no soportado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 415\", () => pm.response.to.have.status(415));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Content-Type no soportado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{reporter1Username}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "L13 | Método no permitido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 405\", () => pm.response.to.have.status(405));",
+                  "pm.test(\"Allow incluye POST\", () => pm.expect(pm.response.headers.get(\"Allow\")).to.include(\"POST\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "Método no permitido"
+          },
+          "response": []
+        },
+        {
+          "name": "L14 | El campo role no eleva permisos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Respuesta con un token Base64 y la identidad de BD\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"token\");",
+                  "        pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "        const payload = JSON.parse(atob(data.token));",
+                  "        pm.expect(payload).to.have.all.keys(\"scheme\", \"username\", \"role\");",
+                  "        pm.expect(payload.scheme).to.eql(\"login\");",
+                  "        pm.expect(payload.username).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(payload.role).to.eql(\"reportante\");",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/login",
+            "description": "El campo role no eleva permisos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{reporter1Username}}\",\n  \"role\": \"revisor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Autorización",
+      "description": "Identidad simulada Base64, rechazo de tokens y listado por rol.",
+      "item": [
+        {
+          "name": "A01 | Sin Authorization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Sin Authorization"
+          },
+          "response": []
+        },
+        {
+          "name": "A02 | Token no Base64",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer %%%"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Token no Base64"
+          },
+          "response": []
+        },
+        {
+          "name": "A03 | Base64 con JSON inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer bm8gZXMgSlNPTg=="
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Base64 con JSON inválido. Contenido Base64 decodificado: `no es JSON`. Los usuarios de estos tokens negativos corresponden a la semilla original."
+          },
+          "response": []
+        },
+        {
+          "name": "A04 | Scheme incorrecto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJzY2hlbWUiOiAib3RybyIsICJ1c2VybmFtZSI6ICJyZXBvcnRhbnRlMSIsICJyb2xlIjogInJlcG9ydGFudGUifQ=="
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Scheme incorrecto. Contenido Base64 decodificado: `{\"scheme\": \"otro\", \"username\": \"reportante1\", \"role\": \"reportante\"}`. Los usuarios de estos tokens negativos corresponden a la semilla original."
+          },
+          "response": []
+        },
+        {
+          "name": "A05 | Rol ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJzY2hlbWUiOiAibG9naW4iLCAidXNlcm5hbWUiOiAicmVwb3J0YW50ZTEifQ=="
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Rol ausente. Contenido Base64 decodificado: `{\"scheme\": \"login\", \"username\": \"reportante1\"}`. Los usuarios de estos tokens negativos corresponden a la semilla original."
+          },
+          "response": []
+        },
+        {
+          "name": "A06 | Rol distinto del almacenado en BD",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJzY2hlbWUiOiAibG9naW4iLCAidXNlcm5hbWUiOiAicmVwb3J0YW50ZTEiLCAicm9sZSI6ICJyZXZpc29yIn0="
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Rol distinto del almacenado en BD. Contenido Base64 decodificado: `{\"scheme\": \"login\", \"username\": \"reportante1\", \"role\": \"revisor\"}`. Los usuarios de estos tokens negativos corresponden a la semilla original."
+          },
+          "response": []
+        },
+        {
+          "name": "A07 | Token de usuario inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJzY2hlbWUiOiAibG9naW4iLCAidXNlcm5hbWUiOiAicWFfdXN1YXJpb19pbmV4aXN0ZW50ZSIsICJyb2xlIjogInJlcG9ydGFudGUifQ=="
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Token de usuario inexistente. Contenido Base64 decodificado: `{\"scheme\": \"login\", \"username\": \"qa_usuario_inexistente\", \"role\": \"reportante\"}`. Los usuarios de estos tokens negativos corresponden a la semilla original."
+          },
+          "response": []
+        },
+        {
+          "name": "A08 | Token con username vacío",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer eyJzY2hlbWUiOiAibG9naW4iLCAidXNlcm5hbWUiOiAiIiwgInJvbGUiOiAicmVwb3J0YW50ZSJ9"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Token con username vacío. Contenido Base64 decodificado: `{\"scheme\": \"login\", \"username\": \"\", \"role\": \"reportante\"}`. Los usuarios de estos tokens negativos corresponden a la semilla original."
+          },
+          "response": []
+        },
+        {
+          "name": "A09 | Base64 con null",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer bnVsbA=="
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Base64 con null. Contenido Base64 decodificado: `null`. Los usuarios de estos tokens negativos corresponden a la semilla original."
+          },
+          "response": []
+        },
+        {
+          "name": "A10 | Se acepta el token sin prefijo Bearer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "        pm.expect(data.every(e => e.reporter === pm.variables.get(\"reporter1Username\"))).to.eql(true);",
+                  "",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "{{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Se acepta el token sin prefijo Bearer"
+          },
+          "response": []
+        },
+        {
+          "name": "A11 | Reportante 2 ve únicamente sus eventos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "        pm.expect(data.every(e => e.reporter === pm.variables.get(\"reporter2Username\"))).to.eql(true);",
+                  "",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter2Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Reportante 2 ve únicamente sus eventos"
+          },
+          "response": []
+        },
+        {
+          "name": "A12 | Revisor ve los eventos de ambos reportantes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "        ",
+                  "        ",
+                  "        pm.expect(data.some(e => e.reporter === pm.variables.get(\"reporter1Username\"))).to.eql(true);",
+                  "        pm.expect(data.some(e => e.reporter === pm.variables.get(\"reporter2Username\"))).to.eql(true);",
+                  "",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Revisor ve los eventos de ambos reportantes"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Validación de eventos",
+      "description": "Casos negativos aislados; cada petición cambia un campo de un cuerpo válido. No deben crear eventos.",
+      "item": [
+        {
+          "name": "V01 | Título ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Título ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V02 | Título de 4 caracteres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Título de 4 caracteres",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"abcd\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V03 | Título de 121 caracteres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Título de 121 caracteres",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{longTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V04 | Título en blanco",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Título en blanco",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"     \",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V05 | Descripción ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Descripción ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V06 | Descripción en blanco",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Descripción en blanco",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \" \",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V07 | Descripción de 2001 caracteres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Descripción de 2001 caracteres",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"{{longDescription}}\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V08 | Fecha ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Fecha ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V09 | Fecha null",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Fecha null",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": null,\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V10 | Fecha futura",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Fecha futura",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{futureDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V11 | Formato de fecha inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Formato de fecha inválido",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"08/11/2026\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V12 | Área fuera del catálogo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Área fuera del catálogo",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Patio\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V13 | Área con mayúsculas incorrectas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Área con mayúsculas incorrectas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V14 | Área ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Área ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V15 | Revisor no puede crear eventos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Revisor no puede crear eventos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "V16 | Crear sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Crear sin token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Creación y acceso",
+      "description": "Crea dos eventos propios de esta ejecución. Recupera sus IDs por un título único porque create-event devuelve texto.",
+      "item": [
+        {
+          "name": "E01 | Crear evento e intentar suplantar al reportante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Mensaje de creación\", () => pm.expect(pm.response.text()).to.eql(\"Event created successfully\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "El campo extra reporter se ignora. E07 confirma que el propietario proviene del token de reportante1.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{eventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Bodega\",\n  \"reporter\": \"{{reporter2Username}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "E02 | Recuperar eventId del listado propio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "        pm.expect(data.every(e => e.reporter === pm.variables.get(\"reporter1Username\"))).to.eql(true);",
+                  "",
+                  "        const matches = data.filter(e => e.title === pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(matches, \"Un único evento de esta ejecución\").to.have.lengthOf(1);",
+                  "        pm.expect(matches[0].eventId).to.be.a(\"number\").and.above(0);",
+                  "        pm.collectionVariables.set(\"eventId\", matches[0].eventId);",
+                  "",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Recuperar eventId del listado propio"
+          },
+          "response": []
+        },
+        {
+          "name": "E03 | Crear evento de reportante 2 con máximos válidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Mensaje de creación\", () => pm.expect(pm.response.text()).to.eql(\"Event created successfully\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter2Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Título de 120 caracteres y descripción de 2000. Este evento permite comprobar acceso ajeno y pertenencia de acciones.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{otherEventTitle}}\",\n  \"description\": \"{{maxDescription}}\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Administración\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "E04 | Recuperar otherEventId sin ver el evento ajeno",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "        pm.expect(data.every(e => e.reporter === pm.variables.get(\"reporter2Username\"))).to.eql(true);",
+                  "",
+                  "        const matches = data.filter(e => e.title === pm.collectionVariables.get(\"otherEventTitle\"));",
+                  "        pm.expect(matches, \"Un único evento de esta ejecución\").to.have.lengthOf(1);",
+                  "        pm.expect(matches[0].eventId).to.be.a(\"number\").and.above(0);",
+                  "        pm.collectionVariables.set(\"otherEventId\", matches[0].eventId);",
+                  "",
+                  "        pm.expect(data.some(e => e.eventId === Number(pm.collectionVariables.get(\"eventId\")))).to.eql(false);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter2Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Recuperar otherEventId sin ver el evento ajeno"
+          },
+          "response": []
+        },
+        {
+          "name": "E05 | Revisor ve ambos eventos nuevos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "        ",
+                  "        ",
+                  "        pm.expect(ids).to.include(Number(pm.collectionVariables.get(\"eventId\")));",
+                  "        pm.expect(ids).to.include(Number(pm.collectionVariables.get(\"otherEventId\")));",
+                  "",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Revisor ve ambos eventos nuevos"
+          },
+          "response": []
+        },
+        {
+          "name": "E06 | El query username no cambia la identidad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        const expectedReporter = pm.variables.get(\"reporter1Username\");",
+                  "        pm.expect(expectedReporter, \"Configurar reporter1Username en la colección o environment\").to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "            pm.expect(e.reporter, \"Propietario del evento \" + e.eventId).to.eql(expectedReporter);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events?username={{reviewerUsername}}&role=revisor",
+            "description": "El query username no cambia la identidad"
+          },
+          "response": []
+        },
+        {
+          "name": "E07 | Detalle propio e historial inicial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"reportado\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(0);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(1);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        ",
+                  "        pm.expect(data.date).to.eql(pm.collectionVariables.get(\"eventDate\"));",
+                  "        pm.expect(data.area).to.eql(\"Bodega\");",
+                  "        pm.expect(data.history[0].actor).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.history[0].description).to.eql(\"Evento creado en estado: reportado\");",
+                  "",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Detalle propio e historial inicial"
+          },
+          "response": []
+        },
+        {
+          "name": "E08 | Reportante 2 no puede consultar el evento de reportante 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter2Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Reportante 2 no puede consultar el evento de reportante 1"
+          },
+          "response": []
+        },
+        {
+          "name": "E09 | Reportante 1 no puede consultar el evento de reportante 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{otherEventId}}",
+            "description": "Reportante 1 no puede consultar el evento de reportante 2"
+          },
+          "response": []
+        },
+        {
+          "name": "E10 | Revisor puede consultar cualquier detalle",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"otherEventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter2Username\"));",
+                  "        pm.expect(data.status).to.eql(\"reportado\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(0);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(1);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{otherEventId}}",
+            "description": "Revisor puede consultar cualquier detalle"
+          },
+          "response": []
+        },
+        {
+          "name": "E11 | ID cero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/0",
+            "description": "ID cero"
+          },
+          "response": []
+        },
+        {
+          "name": "E12 | ID negativo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/-1",
+            "description": "ID negativo"
+          },
+          "response": []
+        },
+        {
+          "name": "E13 | ID no numérico",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/abc",
+            "description": "ID no numérico"
+          },
+          "response": []
+        },
+        {
+          "name": "E14 | Evento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/2147483647",
+            "description": "Evento inexistente"
+          },
+          "response": []
+        },
+        {
+          "name": "E15 | Detalle sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Detalle sin token"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 - Estados y permisos",
+      "description": "El evento principal comienza reportado. Los rechazos deben conservar estado e historial.",
+      "item": [
+        {
+          "name": "F01 | Reportante no puede cambiar el estado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Reportante no puede cambiar el estado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F02 | Reportante no puede crear acciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Reportante no puede crear acciones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F03 | Reportante no puede completar acciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions/2147483647/complete",
+            "description": "Reportante no puede completar acciones"
+          },
+          "response": []
+        },
+        {
+          "name": "F04 | No se crean acciones en reportado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "No se crean acciones en reportado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F05 | No se puede saltar de reportado a cerrado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "No se puede saltar de reportado a cerrado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"cerrado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F06 | Estado desconocido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Estado desconocido",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inventado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F07 | Estado ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Estado ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F08 | Estado null",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Estado null",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F09 | Los rechazos conservan el historial inicial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"reportado\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(0);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(1);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Los rechazos conservan el historial inicial"
+          },
+          "response": []
+        },
+        {
+          "name": "F10 | Avanzar a en revisión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Avanzar a en revisión",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F11 | Repetir el estado actual genera conflicto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Repetir el estado actual genera conflicto",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F12 | No se permite retroceder a reportado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "No se permite retroceder a reportado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"reportado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F13 | Solo el avance exitoso agrega historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"en revisión\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(0);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(2);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Solo el avance exitoso agrega historial"
+          },
+          "response": []
+        },
+        {
+          "name": "F14 | Cambiar estado sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Cambiar estado sin token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"cerrado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F15 | Cambiar estado de evento inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/2147483647/status",
+            "description": "Cambiar estado de evento inexistente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "F16 | Cambiar estado con ID cero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/0/status",
+            "description": "Cambiar estado con ID cero",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - Validación de acciones",
+      "description": "Ejecutar con el evento en revisión. La fecha objetivo admite el mismo día del evento, sin zona horaria.",
+      "item": [
+        {
+          "name": "C01 | Descripción ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Descripción ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C02 | Descripción de 4 caracteres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Descripción de 4 caracteres",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"abcd\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C03 | Descripción de 501 caracteres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Descripción de 501 caracteres",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{longActionDescription}}\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C04 | Descripción en blanco",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Descripción en blanco",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"     \",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C05 | Responsable ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Responsable ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C06 | Responsable en blanco",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Responsable en blanco",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \" \",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C07 | Responsable de 31 caracteres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Responsable de 31 caracteres",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"{{longResponsible}}\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C08 | Fecha objetivo ausente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Fecha objetivo ausente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"Persona QA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C09 | Fecha objetivo anterior al evento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Fecha objetivo anterior al evento",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{beforeEventDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C10 | Formato de fecha objetivo inválido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Formato de fecha objetivo inválido",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"2026/11/15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C11 | Crear acción sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Crear acción sin token",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "C12 | Validaciones no agregan acciones ni historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"en revisión\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(0);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(2);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Validaciones no agregan acciones ni historial"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "07 - Acciones y cierre",
+      "description": "Acción pendiente, bloqueo del cierre, pertenencia al evento, finalización y cierre con auditoría.",
+      "item": [
+        {
+          "name": "W01 | Crear acción con máximos válidos y fecha igual al evento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Acción pendiente y datos conservados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\");",
+                  "        pm.expect(data.actionId).to.be.a(\"number\").and.above(0);",
+                  "        pm.expect(data.description).to.eql(pm.collectionVariables.get(\"maxActionDescription\"));",
+                  "        pm.expect(data.responsible).to.eql(pm.collectionVariables.get(\"maxResponsible\"));",
+                  "        pm.expect(data.targetDate.slice(0, 19)).to.eql(pm.collectionVariables.get(\"targetDate\"));",
+                  "        pm.expect(data.status).to.eql(\"pendiente\");",
+                  "        pm.collectionVariables.set(\"actionId\", data.actionId);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "Crear acción con máximos válidos y fecha igual al evento",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{maxActionDescription}}\",\n  \"responsible\": \"{{maxResponsible}}\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "W02 | Creación de acción registrada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"en revisión\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(1);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(3);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        pm.expect(data.actions[0].actionId).to.eql(Number(pm.collectionVariables.get(\"actionId\")));",
+                  "        pm.expect(data.actions[0].status).to.eql(\"pendiente\");",
+                  "",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Creación de acción registrada"
+          },
+          "response": []
+        },
+        {
+          "name": "W03 | Cierre con acción pendiente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Cierre con acción pendiente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"cerrado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "W04 | Cierre rechazado conserva estado e historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"en revisión\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(1);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(3);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        pm.expect(data.actions[0].actionId).to.eql(Number(pm.collectionVariables.get(\"actionId\")));",
+                  "        pm.expect(data.actions[0].status).to.eql(\"pendiente\");",
+                  "",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Cierre rechazado conserva estado e historial"
+          },
+          "response": []
+        },
+        {
+          "name": "W05 | Poner el segundo evento en revisión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{otherEventId}}/status",
+            "description": "Poner el segundo evento en revisión",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "W06 | Acción no pertenece al evento de la URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{otherEventId}}/actions/{{actionId}}/complete",
+            "description": "Acción no pertenece al evento de la URL"
+          },
+          "response": []
+        },
+        {
+          "name": "W07 | Acción inexistente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions/2147483647/complete",
+            "description": "Acción inexistente"
+          },
+          "response": []
+        },
+        {
+          "name": "W08 | ID de acción cero",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions/0/complete",
+            "description": "ID de acción cero"
+          },
+          "response": []
+        },
+        {
+          "name": "W09 | Completar sin token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions/{{actionId}}/complete",
+            "description": "Completar sin token"
+          },
+          "response": []
+        },
+        {
+          "name": "W10 | Acción ajena rechazada sin historial en el otro evento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"otherEventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter2Username\"));",
+                  "        pm.expect(data.status).to.eql(\"en revisión\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(0);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(2);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{otherEventId}}",
+            "description": "Acción ajena rechazada sin historial en el otro evento"
+          },
+          "response": []
+        },
+        {
+          "name": "W11 | Completar acción pendiente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions/{{actionId}}/complete",
+            "description": "Completar acción pendiente"
+          },
+          "response": []
+        },
+        {
+          "name": "W12 | Completar la misma acción otra vez",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions/{{actionId}}/complete",
+            "description": "Completar la misma acción otra vez"
+          },
+          "response": []
+        },
+        {
+          "name": "W13 | Acción completada y un único cambio de historial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"en revisión\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(1);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(4);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        pm.expect(data.actions[0].actionId).to.eql(Number(pm.collectionVariables.get(\"actionId\")));",
+                  "        pm.expect(data.actions[0].status).to.eql(\"completada\");",
+                  "",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Acción completada y un único cambio de historial"
+          },
+          "response": []
+        },
+        {
+          "name": "W14 | Cerrar con todas las acciones completadas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "Cerrar con todas las acciones completadas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"cerrado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "W15 | No se puede reabrir un evento cerrado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/status",
+            "description": "No se puede reabrir un evento cerrado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "W16 | No se pueden crear acciones en cerrado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions",
+            "description": "No se pueden crear acciones en cerrado",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Revisar y corregir la condición detectada\",\n  \"responsible\": \"Persona QA\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "W17 | No se pueden completar acciones en cerrado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}/actions/{{actionId}}/complete",
+            "description": "No se pueden completar acciones en cerrado"
+          },
+          "response": []
+        },
+        {
+          "name": "W18 | Auditoría final con cinco operaciones exitosas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"eventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter1Username\"));",
+                  "        pm.expect(data.status).to.eql(\"cerrado\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(1);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(5);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        pm.expect(data.actions[0].actionId).to.eql(Number(pm.collectionVariables.get(\"actionId\")));",
+                  "        pm.expect(data.actions[0].status).to.eql(\"completada\");",
+                  "",
+                  "        ",
+                  "        const reporter = pm.variables.get(\"reporter1Username\");",
+                  "        const reviewer = pm.variables.get(\"reviewerUsername\");",
+                  "        const id = pm.collectionVariables.get(\"actionId\");",
+                  "        pm.expect(data.history.map(h => h.actor)).to.deep.eql([reporter, reviewer, reviewer, reviewer, reviewer]);",
+                  "        pm.expect(data.history.map(h => h.description)).to.deep.eql([",
+                  "            \"Evento creado en estado: reportado\",",
+                  "            \"Estado: reportado -> en revisión\",",
+                  "            \"Acción creada: #\" + id + \" (estado pendiente)\",",
+                  "            \"Acción #\" + id + \": pendiente -> completada\",",
+                  "            \"Estado: en revisión -> cerrado\"",
+                  "        ]);",
+                  "",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{eventId}}",
+            "description": "Auditoría final con cinco operaciones exitosas"
+          },
+          "response": []
+        },
+        {
+          "name": "W19 | Se puede cerrar un evento sin acciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{otherEventId}}/status",
+            "description": "Se puede cerrar un evento sin acciones",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"cerrado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "W20 | Segundo evento cerrado sin acciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Detalle, acciones e historial esperados\", () => {",
+                  "        pm.expect(data).to.have.all.keys(\"eventId\", \"title\", \"description\", \"date\", \"area\", \"status\", \"reporter\", \"actions\", \"history\");",
+                  "        pm.expect(data.title).to.eql(pm.collectionVariables.get(\"otherEventTitle\"));",
+                  "        pm.expect(data.reporter).to.eql(pm.variables.get(\"reporter2Username\"));",
+                  "        pm.expect(data.status).to.eql(\"cerrado\");",
+                  "        pm.expect(data.actions).to.be.an(\"array\").with.lengthOf(0);",
+                  "        data.actions.forEach(a => pm.expect(a).to.have.all.keys(\"actionId\", \"description\", \"responsible\", \"targetDate\", \"status\"));",
+                  "        pm.expect(data.history).to.be.an(\"array\").with.lengthOf(3);",
+                  "        data.history.forEach(h => {",
+                  "            pm.expect(h).to.have.all.keys(\"changeHistoryId\", \"changeDate\", \"actor\", \"description\");",
+                  "            pm.expect(h.changeHistoryId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(h.changeDate).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "            pm.expect(h.actor).to.be.a(\"string\").and.not.empty;",
+                  "            pm.expect(h.description).to.be.a(\"string\").and.not.empty;",
+                  "        });",
+                  "        const dates = data.history.map(h => h.changeDate);",
+                  "        pm.expect(dates).to.deep.eql([...dates].sort());",
+                  "        ",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter2Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{otherEventId}}",
+            "description": "Segundo evento cerrado sin acciones"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 - Límites mínimos válidos",
+      "description": "Casos positivos adicionales. Crean datos nuevos y verifican los límites inferiores de longitud.",
+      "item": [
+        {
+          "name": "B01 | Evento con título de 5, descripción de 1 y fecha de hoy UTC",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Mensaje de creación\", () => pm.expect(pm.response.text()).to.eql(\"Event created successfully\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Evento con título de 5, descripción de 1 y fecha de hoy UTC",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"QAmin\",\n  \"description\": \"D\",\n  \"date\": \"{{today}}\",\n  \"area\": \"Planta Norte\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "B02 | Crear otro evento para límites de acción",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"minActionEventTitle\", pm.collectionVariables.get(\"eventTitle\") + \" mínimo\");"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Mensaje de creación\", () => pm.expect(pm.response.text()).to.eql(\"Event created successfully\"));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/create-event",
+            "description": "Crear otro evento para límites de acción",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"{{minActionEventTitle}}\",\n  \"description\": \"Descripción de prueba generada por Postman\",\n  \"date\": \"{{eventDate}}\",\n  \"area\": \"Planta Sur\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "B03 | Recuperar ID del evento de límites",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "",
+                  "if (pm.response.code === 200) {",
+                  "    const data = pm.response.json();",
+                  "    pm.test(\"Listado con estructura, orden y visibilidad correctos\", () => {",
+                  "        pm.expect(data).to.be.an(\"array\");",
+                  "        data.forEach(e => {",
+                  "            pm.expect(e).to.have.all.keys(\"eventId\", \"title\", \"date\", \"area\", \"status\", \"reporter\");",
+                  "            pm.expect(e.eventId).to.be.a(\"number\").and.above(0);",
+                  "            pm.expect(e.status).to.be.oneOf([\"reportado\", \"en revisión\", \"cerrado\"]);",
+                  "        });",
+                  "        const ids = data.map(e => e.eventId);",
+                  "        pm.expect(ids).to.deep.eql([...ids].sort((a, b) => a - b));",
+                  "        pm.expect(data.every(e => e.reporter === pm.variables.get(\"reporter1Username\"))).to.eql(true);",
+                  "",
+                  "        const matches = data.filter(e => e.title === pm.collectionVariables.get(\"minActionEventTitle\"));",
+                  "        pm.expect(matches, \"Un único evento de esta ejecución\").to.have.lengthOf(1);",
+                  "        pm.expect(matches[0].eventId).to.be.a(\"number\").and.above(0);",
+                  "        pm.collectionVariables.set(\"minActionEventId\", matches[0].eventId);",
+                  "",
+                  "        ",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reporter1Token}}"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events",
+            "description": "Recuperar ID del evento de límites"
+          },
+          "response": []
+        },
+        {
+          "name": "B04 | Poner el evento de límites en revisión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{minActionEventId}}/status",
+            "description": "Poner el evento de límites en revisión",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"en revisión\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "B05 | Acción con descripción de 5 y responsable de 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "if (pm.response.code === 201) {",
+                  "    pm.test(\"Límites mínimos conservados\", () => {",
+                  "        const data = pm.response.json();",
+                  "        pm.expect(data.description).to.eql(\"Tarea\");",
+                  "        pm.expect(data.responsible).to.eql(\"R\");",
+                  "        pm.expect(data.status).to.eql(\"pendiente\");",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json, text/plain"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{reviewerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/events/{{minActionEventId}}/actions",
+            "description": "Acción con descripción de 5 y responsable de 1",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Tarea\",\n  \"responsible\": \"R\",\n  \"targetDate\": \"{{targetDate}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

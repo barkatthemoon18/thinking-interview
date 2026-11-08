@@ -105,7 +105,7 @@ class LoginIntegrationTests {
     void requestsWithoutAuthorizationAreRejected() throws Exception {
         mockMvc.perform(get("/api/events").param("username", "reportante1"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(post("/api/events").contentType(MediaType.APPLICATION_JSON).content(eventBody()))
+        mockMvc.perform(post("/api/create-event").contentType(MediaType.APPLICATION_JSON).content(eventBody()))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/events/1")).andExpect(status().isUnauthorized());
         mockMvc.perform(patch("/api/events/1/actions/1/complete")).andExpect(status().isUnauthorized());
@@ -150,7 +150,7 @@ class LoginIntegrationTests {
 
     @Test
     void reviewersCannotCreateEvents() throws Exception {
-        mockMvc.perform(post("/api/events").header("Authorization", loginAs("revisor1"))
+        mockMvc.perform(post("/api/create-event").header("Authorization", loginAs("revisor1"))
                         .contentType(MediaType.APPLICATION_JSON).content(eventBody()))
                 .andExpect(status().isForbidden());
         assertEquals(4, jdbcTemplate.queryForObject("SELECT COUNT(*) FROM EVENT", Integer.class));
@@ -158,7 +158,7 @@ class LoginIntegrationTests {
 
     @Test
     void eventAndHistoryUseTheUserFromAuthorizationRegardlessOfTheBodyReporter() throws Exception {
-        mockMvc.perform(post("/api/events").header("Authorization", loginAs("reportante1"))
+        mockMvc.perform(post("/api/create-event").header("Authorization", loginAs("reportante1"))
                         .contentType(MediaType.APPLICATION_JSON).content(eventBody()))
                 .andExpect(status().isCreated());
         Integer eventId = jdbcTemplate.queryForObject("SELECT EVENT_ID FROM EVENT WHERE TITLE = ?",
@@ -188,7 +188,7 @@ class LoginIntegrationTests {
 
         mockMvc.perform(patch("/api/events/1/status").header("Authorization", loginAs("revisor1"))
                         .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"en revisión\"}"))
-                .andExpect(status().isNotImplemented());
+                .andExpect(status().isNoContent());
     }
 
     private String loginAs(String username) throws Exception {

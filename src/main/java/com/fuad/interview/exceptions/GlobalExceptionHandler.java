@@ -61,7 +61,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleUnexpectedException(Exception exception, WebRequest request) {
-        LOGGER.error("Error no controlado al procesar una solicitud", exception);
+        logFailure(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error interno al procesar la solicitud.",
+                request, exception);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error interno al procesar la solicitud.", request);
     }
 
@@ -85,14 +86,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                     .toList());
         }
 
-        if (status.is5xxServerError()) {
-            LOGGER.error("Error al procesar una solicitud HTTP", exception);
-        }
+        logFailure(status, detail, request, exception);
         return super.handleExceptionInternal(exception, problem, headers, status, request);
     }
 
     private ResponseEntity<Object> error(HttpStatus status, String detail, WebRequest request) {
+        if (!status.is5xxServerError()) {
+            logFailure(status, detail, request, null);
+        }
         return ResponseEntity.status(status).body(problem(status, detail, request));
+    }
+
+    private void logFailure(HttpStatusCode status, String detail, WebRequest request, @Nullable Exception exception) {
+        String method = "UNKNOWN";
+        String path = "UNKNOWN";
+        if (request instanceof ServletWebRequest servletWebRequest) {
+            method = servletWebRequest.getRequest().getMethod();
+            path = servletWebRequest.getRequest().getRequestURI();
+        }
+        if (status.is5xxServerError()) {
+            LOGGER.error("Solicitud fallida: method={} path={} status={} reason={}",
+                    method, path, status.value(), detail, exception);
+        } else {
+            LOGGER.warn("Solicitud rechazada: method={} path={} status={} reason={}",
+                    method, path, status.value(), detail);
+        }
     }
 
     private ProblemDetail problem(HttpStatusCode status, String detail, WebRequest request) {
