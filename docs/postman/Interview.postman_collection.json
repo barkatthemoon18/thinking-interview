@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "9eb932ab-fd14-49ce-a0ef-202611080001",
     "name": "Interview API - Plan de pruebas",
-    "description": "110 peticiones con validaciones automáticas. Ejecutar todas en orden desde L01, sin archivo de datos, una iteración por ejecución. Incluye baseUrl y usuarios locales predeterminados; el environment local permite sobrescribirlos. Ver docs/postman/README.md y docs/PLAN_PRUEBAS_API.md. Genera cuatro eventos y dos acciones por ejecución; reiniciar la aplicación restablece H2. El login es un mock Base64 sin contraseña ni firma.",
+    "description": "110 peticiones con validaciones automáticas. Ejecutar todas en orden desde L01, sin archivo de datos, una iteración por ejecución. Incluye baseUrl y usuarios locales predeterminados; el environment local permite sobrescribirlos. Ver README.md (sección Pruebas/Postman) y docs/PLAN_PRUEBAS_API.md. Genera cuatro eventos y dos acciones por ejecución; reiniciar la aplicación restablece H2. El login es un mock Base64 sin contraseña ni firma.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
